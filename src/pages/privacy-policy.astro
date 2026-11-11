@@ -1,0 +1,180 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+// Must match the version published from the admin panel (Administración → Políticas) with
+// this page as its content URL: that's what makes everyone re-accept it before continuing.
+const version = 'v1.2';
+const updatedAt = '1 de octubre de 2026';
+---
+
+<Layout title="Política de tratamiento de datos — MediTrack">
+	<div class="min-h-screen bg-surface pb-16">
+		<header class="border-b border-border bg-surface-card">
+			<div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+				<a href="/" class="text-lg font-bold text-primary">MediTrack</a>
+				<a href="/register" class="text-sm font-semibold text-text-secondary hover:underline">Volver al registro</a>
+			</div>
+		</header>
+
+		<main class="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+			<h1 class="text-2xl font-bold text-text">Política de tratamiento de datos de salud</h1>
+			<p class="mt-1 text-sm text-text-caption">Versión {version} — vigente desde el {updatedAt}</p>
+
+			<div class="mt-6 rounded-xl border border-border-strong bg-surface-info p-4 text-sm text-text-secondary">
+				Este documento describe, en lenguaje claro, cómo MediTrack recopila, usa y protege tu
+				información y la de las personas a tu cargo. Es un borrador base pensado para un proyecto
+				en desarrollo: antes de operar con usuarios reales debe ser revisado por un abogado
+				especializado en protección de datos y adaptado a la normativa del país donde opere
+				(en Colombia, la Ley 1581 de 2012 y el Decreto 1377 de 2013 sobre Habeas Data).
+			</div>
+
+			<section class="mt-8 flex flex-col gap-6 text-[15px] leading-relaxed text-text-secondary">
+				<div>
+					<h2 class="text-lg font-bold text-text">1. Quién trata tus datos</h2>
+					<p class="mt-2">
+						MediTrack es una aplicación de seguimiento de medicación operada como el proyecto
+						descrito en este sistema. Actuamos como responsables del tratamiento de los datos
+						que ingresas al usar la plataforma: tus datos de cuenta y, si lo autorizas, los de las
+						personas que gestionas como cuidador.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">2. Qué datos recopilamos</h2>
+					<ul class="mt-2 list-disc space-y-1.5 pl-5">
+						<li><strong>Datos de identificación:</strong> nombre, correo electrónico y contraseña (almacenada cifrada, nunca en texto plano).</li>
+						<li><strong>Datos de contacto de emergencia:</strong> nombre y teléfono de la persona a contactar en una urgencia.</li>
+						<li>
+							<strong>Datos de salud:</strong> medicamentos y tratamientos activos e históricos, dosis
+							programadas y registradas (tomadas, saltadas o vencidas), alergias y su severidad,
+							e instrucciones médicas asociadas.
+						</li>
+						<li>
+							<strong>Imágenes de fórmulas médicas:</strong> solo si usas la función de escaneo. Para
+							leerla, la foto se envía a un proveedor externo de inteligencia artificial, Anthropic
+							(ver la sección 5). Ten en cuenta que una fórmula suele incluir, además de los
+							medicamentos, datos impresos como tu nombre, tu número de documento o los datos del
+							médico. MediTrack no guarda la foto: solo conserva los medicamentos que tú revises y
+							confirmes como parte de tus tratamientos. Si prefieres que la foto no salga de
+							MediTrack, puedes ingresar tus medicamentos a mano.
+						</li>
+						<li><strong>Relaciones de cuidado:</strong> qué perfiles gestionas como cuidador y qué cuidador tiene acceso a tu cuenta, si aplica.</li>
+						<li><strong>Datos técnicos mínimos:</strong> fecha de creación de la cuenta y registros de sesión necesarios para mantenerte conectado de forma segura.</li>
+					</ul>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">3. Para qué usamos tus datos</h2>
+					<ul class="mt-2 list-disc space-y-1.5 pl-5">
+						<li>Generar y mostrarte el horario de tomas de tus tratamientos.</li>
+						<li>Enviarte recordatorios cuando se acerca o vence una dosis: por correo electrónico, como notificación en el navegador y como notificación en tu teléfono si usas la app móvil.</li>
+						<li>Calcular tu porcentaje de adherencia al tratamiento.</li>
+						<li>Generar tu tarjeta de emergencia (en pantalla y en PDF) con tus alergias, contacto de emergencia y tratamientos activos, para usarla en una urgencia médica.</li>
+						<li>Permitir que un cuidador autorizado por ti gestione tratamientos en tu nombre, si así lo decides.</li>
+						<li>Detectar posibles interacciones o duplicidades básicas al registrar un nuevo tratamiento.</li>
+					</ul>
+					<p class="mt-2">No usamos tus datos de salud para publicidad, ni los vendemos, ni los usamos para entrenar modelos de inteligencia artificial de terceros.</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">4. Base legal</h2>
+					<p class="mt-2">
+						Tratamos tus datos de salud con base en tu <strong>consentimiento previo, expreso e
+						informado</strong>, otorgado al aceptar esta política durante el registro. Puedes
+						retirar ese consentimiento en cualquier momento eliminando tu cuenta (ver sección 8);
+						hacerlo detiene el uso de tus datos para nuevos fines, sin afectar la licitud del
+						tratamiento ya realizado.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">5. Con quién compartimos tus datos</h2>
+					<ul class="mt-2 list-disc space-y-1.5 pl-5">
+						<li>
+							<strong>Tu cuidador</strong>, únicamente si tú lo autorizaste explícitamente mediante el
+							consentimiento de monitoreo (ver la <a href="/caregiver-consent" class="font-semibold text-primary hover:underline">Política de monitoreo por cuidadores</a>), o si tu perfil fue creado por
+							un cuidador y aún no tienes cuenta propia.
+						</li>
+						<li>
+							<strong>Anthropic, PBC (Estados Unidos)</strong>, proveedor del modelo de inteligencia
+							artificial que lee las fórmulas médicas. Solo recibe la foto de la fórmula, y solo
+							cuando tú usas el escaneo, con el único fin de transcribir los medicamentos que
+							aparecen en ella; no recibe tu nombre de usuario, tu correo ni el resto de tu historial.
+							Como Anthropic opera fuera de Colombia, usar el escaneo implica una
+							<strong>transferencia internacional</strong> de esa imagen, que autorizas al aceptar
+							esta política. El escaneo es opcional.
+						</li>
+						<li>
+							<strong>Catálogo público de medicamentos (INVIMA):</strong> al buscar un medicamento
+							consultamos el registro público de INVIMA por su nombre; esta consulta no envía tus
+							datos personales ni de salud, solo el nombre genérico del medicamento.
+						</li>
+						<li>No compartimos, vendemos ni cedemos tus datos de salud a terceros con fines comerciales, publicitarios o de analítica externa.</li>
+					</ul>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">6. Cómo protegemos tus datos</h2>
+					<ul class="mt-2 list-disc space-y-1.5 pl-5">
+						<li>Tu contraseña se almacena cifrada (BCrypt), nunca en texto plano.</li>
+						<li>El acceso a la aplicación se controla con sesiones basadas en tokens de corta duración, renovados de forma segura.</li>
+						<li>Cada perfil de dependiente solo es accesible por su cuidador autorizado o por la propia persona una vez reclama su cuenta.</li>
+						<li>Un administrador de la plataforma puede gestionar el estado de las cuentas, pero no tiene acceso a tratamientos, dosis, alergias ni a la tarjeta de emergencia de ningún usuario.</li>
+					</ul>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">7. Cuánto tiempo conservamos tus datos</h2>
+					<p class="mt-2">
+						Conservamos tus datos mientras tu cuenta esté activa. Si eliminas tu cuenta, esta se
+						desactiva de inmediato (dejas de poder iniciar sesión y ninguna sesión activa sigue
+						funcionando), pero tu historial médico no se borra automáticamente — se conserva por si
+						decides reactivar tu cuenta o por trazabilidad médica. Puedes solicitar el borrado
+						definitivo de tus datos escribiendo a través de los canales de contacto del proyecto.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">8. Tus derechos</h2>
+					<p class="mt-2">Sobre tus propios datos, en cualquier momento puedes:</p>
+					<ul class="mt-2 list-disc space-y-1.5 pl-5">
+						<li><strong>Acceder</strong> a toda tu información desde tu propio panel.</li>
+						<li><strong>Rectificar</strong> tu nombre, correo, contacto de emergencia, alergias y tratamientos directamente en la aplicación.</li>
+						<li><strong>Revocar el acceso de un cuidador</strong> en cualquier momento, sin necesidad de justificarlo.</li>
+						<li><strong>Solicitar la eliminación</strong> de tu cuenta y, si lo pides expresamente, de tu historial médico completo.</li>
+						<li><strong>Conocer qué versión de esta política aceptaste</strong> y consultar versiones anteriores.</li>
+					</ul>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">9. Perfiles de personas a cargo (dependientes)</h2>
+					<p class="mt-2">
+						Si gestionas el perfil de otra persona (por ejemplo, un familiar que no puede usar la
+						app por sí mismo), eres responsable de contar con su autorización o la de su
+						representante legal para registrar sus datos de salud. Si esa persona más adelante
+						reclama su propia cuenta, pasa a controlar directamente el acceso de su cuidador
+						mediante el consentimiento de monitoreo.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">10. Cambios a esta política</h2>
+					<p class="mt-2">
+						Cuando publiquemos una nueva versión de esta política, quedará disponible en esta
+						misma dirección con su número de versión y fecha, y la aplicación te pedirá leerla y
+						aceptarla antes de seguir usándola.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">11. Contacto</h2>
+					<p class="mt-2">
+						Para ejercer cualquiera de tus derechos o resolver dudas sobre el tratamiento de tus
+						datos, contáctanos a través de los canales de soporte indicados dentro de la
+						aplicación.
+					</p>
+				</div>
+			</section>
+		</main>
+	</div>
+</Layout>

@@ -1,0 +1,12 @@
+{
+  "name": "meditrack-web-e2e",
+  "private": true,
+  "description": "End-to-end tests of the MediTrack web app against a running stack (docker compose up).",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

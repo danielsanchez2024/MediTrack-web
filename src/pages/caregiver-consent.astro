@@ -1,0 +1,93 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const version = 'v1.1';
+const updatedAt = '25 de septiembre de 2026';
+---
+
+<Layout title="Política de monitoreo por cuidadores — MediTrack">
+	<div class="min-h-screen bg-surface pb-16">
+		<header class="border-b border-border bg-surface-card">
+			<div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+				<a href="/" class="text-lg font-bold text-primary">MediTrack</a>
+				<a href="/dashboard" class="text-sm font-semibold text-text-secondary hover:underline">Volver al panel</a>
+			</div>
+		</header>
+
+		<main class="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+			<h1 class="text-2xl font-bold text-text">Política de monitoreo por cuidadores</h1>
+			<p class="mt-1 text-sm text-text-caption">Versión {version} — vigente desde el {updatedAt}</p>
+
+			<div class="mt-6 rounded-xl border border-border-strong bg-surface-info p-4 text-sm text-text-secondary">
+				Este documento explica qué significa autorizar a un cuidador a seguir viendo tus datos
+				una vez que tienes tu propia cuenta en MediTrack. Es un borrador base para un proyecto en
+				desarrollo, pensado para revisión legal antes de operar con usuarios reales.
+			</div>
+
+			<section class="mt-8 flex flex-col gap-6 text-[15px] leading-relaxed text-text-secondary">
+				<div>
+					<h2 class="text-lg font-bold text-text">1. Qué es el monitoreo por cuidadores</h2>
+					<p class="mt-2">
+						Cuando una persona sin cuenta propia (por ejemplo, alguien mayor o que no puede usar
+						la app) es registrada por un familiar o cuidador, ese cuidador administra sus
+						tratamientos directamente. Cuando esa persona <strong>reclama su propia cuenta</strong>
+						(mediante un código de invitación), pasa a decidir ella misma si su cuidador conserva
+						o no ese mismo nivel de acceso — eso es el consentimiento de monitoreo.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">2. Qué puede ver y hacer tu cuidador si le das acceso</h2>
+					<ul class="mt-2 list-disc space-y-1.5 pl-5">
+						<li>Ver tus tratamientos activos e inactivos, tus dosis programadas y tu historial de tomas.</li>
+						<li>Ver tus alergias y tu tarjeta de emergencia.</li>
+						<li>Registrar, editar o desactivar tratamientos y dosis en tu nombre.</li>
+						<li>Editar tu contacto de emergencia y tus alergias.</li>
+					</ul>
+					<p class="mt-2">
+						Tu cuidador <strong>no</strong> puede cambiar tu correo ni tu contraseña, ni ver ni
+						cambiar tu rol de cuenta; esas acciones solo las puedes hacer tú.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">3. Cómo se activa</h2>
+					<p class="mt-2">
+						Al reclamar tu cuenta con el código de invitación de tu cuidador, el acceso queda
+						activo por defecto — así se mantiene la continuidad del seguimiento de tu tratamiento
+						sin interrupciones. Desde ese momento, tú controlas si continúa activo o no.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">4. Cómo revocar el acceso</h2>
+					<p class="mt-2">
+						Puedes revocarlo en cualquier momento desde tu cuenta, en la sección "Acceso de tu
+						cuidador" dentro de la configuración de cuenta, sin necesidad de justificarlo ni de
+						avisar a tu cuidador. También puedes volver a otorgarlo después si cambias de
+						decisión.
+					</p>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">5. Qué pasa cuando revocas el acceso</h2>
+					<ul class="mt-2 list-disc space-y-1.5 pl-5">
+						<li>Tu cuidador deja de ver de inmediato tus tratamientos, dosis, alergias y tarjeta de emergencia.</li>
+						<li>Tu historial no se borra ni se ve afectado: solo cambia quién puede consultarlo.</li>
+						<li>Tú sigues teniendo acceso completo a tu propia cuenta en todo momento.</li>
+					</ul>
+				</div>
+
+				<div>
+					<h2 class="text-lg font-bold text-text">6. Tus derechos</h2>
+					<p class="mt-2">
+						En cualquier momento puedes consultar si tienes un cuidador con acceso activo, quién
+						es, y otorgar o revocar ese acceso sin restricciones, desde la configuración de tu
+						cuenta. Para dudas adicionales, consulta también la
+						<a href="/privacy-policy" class="font-semibold text-primary hover:underline">Política de tratamiento de datos de salud</a>.
+					</p>
+				</div>
+			</section>
+		</main>
+	</div>
+</Layout>

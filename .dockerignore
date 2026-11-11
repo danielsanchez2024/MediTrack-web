@@ -1,0 +1,8 @@
+node_modules
+dist
+.astro
+.git
+*.md
+e2e
+.github
+.env

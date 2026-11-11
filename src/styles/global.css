@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* Design tokens — "Serene Clinical" system. Keep these as the single source of truth; every
+   screen should pull colors from here rather than hardcoding hex values, so the palette stays
+   consistent as more pages get built. */
+@theme {
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+
+  /* Brand / primary actions */
+  --color-primary: #0d5c75;
+  --color-primary-hover: #0a4a5e;
+  --color-secondary: #2d9f83;
+
+  /* Success */
+  --color-success: #2d9f83;
+  --color-success-soft: #a7f3d0;
+  --color-success-bg: #ecfdf5;
+
+  /* Surfaces */
+  --color-surface: #f9f9ff;
+  --color-surface-card: #ffffff;
+  --color-surface-info: #ebf5fa;
+  --color-surface-muted: #f0f4f8;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cfdaf2;
+
+  /* Danger / critical */
+  --color-danger: #dc2626;
+  --color-danger-strong: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-danger-bg-soft: #fee2e2;
+
+  /* Warning / pending */
+  --color-warning: #d97706;
+  --color-warning-strong: #f59e0b;
+  --color-warning-bg: #fffbeb;
+  --color-warning-bg-soft: #fef3c7;
+
+  /* Text */
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-text-caption: #64748b;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
