@@ -550,10 +550,27 @@ export interface PrescriptionScanResult {
 // the user to review/correct; nothing is persisted until each draft is confirmed via
 // createTreatment(..., { fromPrescriptionScan: true }). Can take ~15-20s (CPU-bound vision
 // model on the backend), so callers should show a patient loading state, not a short spinner.
-export function scanPrescription(image: File): Promise<PrescriptionScanResult> {
+export function scanPrescription(image: File, dataSharingConsent = false): Promise<PrescriptionScanResult> {
   const formData = new FormData();
   formData.append('image', image);
+  // The backend refuses (400) to send the photo to a provider whose data handling nobody
+  // verified unless the user agreed — see getScanProviderInfo / consentRequired.
+  formData.append('dataSharingConsent', String(dataSharingConsent));
   return authUploadRequest('/prescriptions/scan', formData);
+}
+
+// Who reads the prescription photo and what is known about their data handling, so the screen can
+// say it before the user picks a photo. Mirrors ScanProviderInfoDTO (no model, host or key).
+export interface ScanProviderInfo {
+  provider: string;
+  dataPolicy: 'verified' | 'unverified';
+  consentRequired: boolean;
+  // False while an admin has paused scanning (the scan then answers 503). Absent on older backends.
+  available?: boolean;
+}
+
+export function getScanProviderInfo(): Promise<ScanProviderInfo> {
+  return authRequest('/prescriptions/provider');
 }
 
 export type AllergySeverity = 'MILD' | 'MODERATE' | 'SEVERE';
@@ -729,8 +746,18 @@ export interface AdminUserSummary {
   lastLoginAt: string | null;
 }
 
-export function getAdminUsers(): Promise<AdminUserSummary[]> {
-  return authRequest('/admin/users');
+export interface AdminUserPage {
+  items: AdminUserSummary[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+// Paged and searched on the server: the list never loads every account at once.
+export function getAdminUsers(query = '', page = 0, size = 50): Promise<AdminUserPage> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (query.trim()) params.set('q', query.trim());
+  return authRequest(`/admin/users?${params}`);
 }
 
 // Aggregate counts only — no per-user health data, consistent with the rest of the admin scope.
@@ -795,8 +822,9 @@ export function createPrivacyPolicy(payload: CreatePrivacyPolicyRequest): Promis
 }
 
 // How this account wants dose reminders, per channel. Email and SMS are sent by the backend;
-// push is the mobile app's own notifications — stored here so the app can read it, but only
-// editable from the app (the web shows it as information).
+// push is the notification bell: the browser's reminders while the tab is open and the phone
+// app's own notifications. The preference belongs to the account — the bell's switch on the web and
+// the phone's settings both write it, and the phone asks the OS for its permission by itself.
 export type ReminderTiming = 'BEFORE' | 'AT_TIME' | 'BOTH';
 
 export interface NotificationPreferences {
@@ -819,4 +847,144 @@ export function updateNotificationPreferences(payload: NotificationPreferences):
     method: 'PUT',
     body: JSON.stringify(payload)
   });
+}
+
+// --- Admin operations (traffic, flows, system, emergency switches, audit) ---
+// Everything here is aggregate: request counts per endpoint pattern, status codes, timings and
+// platform settings. There is no user, IP address, email or health data in any of these payloads.
+
+export type OpsRange = '1h' | '6h' | '24h' | '7d' | '30d';
+
+export interface OpsTotals {
+  requests: number;
+  errors4xx: number;
+  errors5xx: number;
+  rateLimited: number;
+  unauthorized: number;
+  avgMs: number;
+  p50Ms: number;
+  p95Ms: number;
+  maxMs: number;
+}
+
+export interface OpsTrafficPoint {
+  at: string;
+  requests: number;
+  errors4xx: number;
+  errors5xx: number;
+  rateLimited: number;
+  unauthorized: number;
+  avgMs: number;
+  p95Ms: number;
+  maxMs: number;
+  heapUsedMb: number | null;
+  cpuPct: number | null;
+}
+
+export interface OpsTrafficSeries {
+  range: OpsRange;
+  bucketSeconds: number;
+  points: OpsTrafficPoint[];
+  totals: OpsTotals;
+}
+
+export interface OpsEndpointStat {
+  endpoint: string;
+  count: number;
+  errors4xx: number;
+  errors5xx: number;
+  avgMs: number;
+  statuses: Record<string, number>;
+}
+
+export interface OpsFlows {
+  range: OpsRange;
+  flows: Record<string, Record<string, number>>;
+}
+
+export interface OpsSwitchState {
+  key: string;
+  enabled: boolean;
+  reason: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+export interface OpsSystemStatus {
+  uptimeSeconds: number;
+  heapUsedMb: number;
+  heapMaxMb: number;
+  threads: number;
+  cpuLoadPct: number | null;
+  dbUp: boolean;
+  dbPingMs: number;
+  dbSizeMb: number | null;
+  dbPoolActive: number | null;
+  dbPoolIdle: number | null;
+  dbPoolMax: number | null;
+  javaVersion: string;
+  environment: string;
+}
+
+export interface OpsAiStatus {
+  provider: string;
+  dataPolicy: 'verified' | 'unverified';
+  scanEnabled: boolean;
+  scansToday: number;
+  maxPerDay: number;
+  maxPerUserPerDay: number;
+  scansLastMinute: number;
+  maxPerMinute: number;
+  inFlight: number;
+  maxConcurrent: number;
+}
+
+export interface OpsOverview {
+  system: OpsSystemStatus;
+  last5Minutes: OpsTotals;
+  lastHour: OpsTotals;
+  ai: OpsAiStatus;
+  limits: { rateLimitEnabled: boolean; rateLimiterTrackedKeys: number };
+  switches: OpsSwitchState[];
+}
+
+export interface OpsAuditEntry {
+  id: string;
+  at: string;
+  adminEmail: string;
+  action: string;
+  target: string | null;
+  details: string | null;
+}
+
+export function getOpsOverview(): Promise<OpsOverview> {
+  return authRequest('/admin/ops/overview');
+}
+
+export function getOpsTraffic(range: OpsRange): Promise<OpsTrafficSeries> {
+  return authRequest(`/admin/ops/traffic?range=${range}`);
+}
+
+export function getOpsEndpoints(range: OpsRange): Promise<OpsEndpointStat[]> {
+  return authRequest(`/admin/ops/endpoints?range=${range}`);
+}
+
+export function getOpsFlows(range: OpsRange): Promise<OpsFlows> {
+  return authRequest(`/admin/ops/flows?range=${range}`);
+}
+
+export function getOpsSwitches(): Promise<OpsSwitchState[]> {
+  return authRequest('/admin/ops/switches');
+}
+
+// Turning a switch off needs a reason: it affects every user and it goes into the audit trail.
+export function setOpsSwitch(key: string, enabled: boolean, reason: string): Promise<OpsSwitchState> {
+  return authRequest(`/admin/ops/switches/${key}`, {
+    method: 'PUT',
+    body: JSON.stringify({ enabled, reason: reason.trim() || null })
+  });
+}
+
+export function getOpsAudit(limit = 50): Promise<OpsAuditEntry[]> {
+  return authRequest(`/admin/ops/audit?limit=${limit}`);
 }

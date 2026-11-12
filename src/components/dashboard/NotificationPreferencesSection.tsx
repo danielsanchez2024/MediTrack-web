@@ -198,7 +198,7 @@ export default function NotificationPreferencesSection({ email, hasDependents }:
             <p className="text-xs text-text-secondary">
               <span className="font-semibold">Notificaciones en el móvil:</span>{' '}
               {preferences.pushEnabled ? `activadas (${TIMING_TEXT[preferences.pushTiming]})` : 'desactivadas'}. Se
-              configuran desde la app MediTrack, en Mi cuenta.
+              activan o desactivan con la campanita de arriba o desde la app MediTrack, en Mi cuenta.
             </p>
           </div>
 

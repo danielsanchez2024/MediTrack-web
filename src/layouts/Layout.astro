@@ -3,9 +3,10 @@ import '../styles/global.css';
 
 interface Props {
 	title?: string;
+	description?: string;
 }
 
-const { title = 'MediTrack' } = Astro.props;
+const { title = 'MediTrack', description } = Astro.props;
 ---
 
 <!doctype html>
@@ -22,6 +23,11 @@ const { title = 'MediTrack' } = Astro.props;
 			rel="stylesheet"
 		/>
 		<title>{title}</title>
+		{description && <meta name="description" content={description} />}
+		{description && <meta property="og:title" content={title} />}
+		{description && <meta property="og:description" content={description} />}
+		{description && <meta property="og:type" content="website" />}
+		<meta name="theme-color" content="#0d5c75" />
 	</head>
 	<body class="font-sans antialiased">
 		<slot />

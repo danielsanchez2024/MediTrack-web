@@ -1,10 +1,12 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { X, Camera, ScanLine, AlertTriangle, Pencil } from 'lucide-react';
-import { scanPrescription, ApiError } from '../../lib/api';
+import { X, Camera, ScanLine, AlertTriangle, Pencil, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { scanPrescription, getScanProviderInfo, ApiError, type ScanProviderInfo } from '../../lib/api';
+import { prepareImageForUpload, type CropRect } from '../../lib/imageCrop';
 import { submitDrafts, draftFromScan, emptyDraft, type TreatmentDraft } from '../../lib/treatmentDrafts';
 import { toSpanishMessage } from '../../lib/errorMessages';
 import TreatmentFormFields, { isDraftIncomplete, type TreatmentFormValues } from './TreatmentFormFields';
 import TreatmentDraftTabs from './TreatmentDraftTabs';
+import PrescriptionCropper from './PrescriptionCropper';
 
 interface ScanPrescriptionModalProps {
   profileId: string;
@@ -13,6 +15,12 @@ interface ScanPrescriptionModalProps {
 }
 
 type Step = 'capture' | 'scanning' | 'review';
+
+// Names for the provider ids the backend reports. The host and model are never exposed.
+const PROVIDER_NAMES: Record<string, string> = {
+  anthropic: 'Anthropic (Claude)',
+  'openai-compatible': 'un servicio externo de inteligencia artificial'
+};
 
 function messageForCaptureError(error: unknown): string {
   return error instanceof ApiError ? toSpanishMessage(error.message) : 'No pudimos conectar con el servidor.';
@@ -27,6 +35,23 @@ export default function ScanPrescriptionModal({ profileId, onClose, onCreated }:
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [submitBanner, setSubmitBanner] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // null while loading or if it could not be fetched — then the stricter (consent) path applies.
+  const [providerInfo, setProviderInfo] = useState<ScanProviderInfo | null>(null);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [crop, setCrop] = useState<CropRect | null>(null);
+
+  const consentRequired = providerInfo ? providerInfo.consentRequired : true;
+  // An admin can pause scanning from the operations panel.
+  const scanPaused = providerInfo?.available === false;
+  const providerName = providerInfo
+    ? (PROVIDER_NAMES[providerInfo.provider] ?? 'un servicio externo de inteligencia artificial')
+    : 'un servicio externo de inteligencia artificial';
+
+  useEffect(() => {
+    getScanProviderInfo()
+      .then(setProviderInfo)
+      .catch(() => setProviderInfo(null));
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -40,6 +65,7 @@ export default function ScanPrescriptionModal({ profileId, onClose, onCreated }:
     const file = event.target.files?.[0];
     if (!file) return;
     setCaptureError(null);
+    setCrop(null);
     setImageFile(file);
     setImagePreviewUrl((current) => {
       if (current) URL.revokeObjectURL(current);
@@ -52,7 +78,10 @@ export default function ScanPrescriptionModal({ profileId, onClose, onCreated }:
     setStep('scanning');
     setCaptureError(null);
     try {
-      const result = await scanPrescription(imageFile);
+      // Cropped (if the user framed the medications), shrunk and stripped of EXIF on the device —
+      // what leaves the phone is only this.
+      const upload = await prepareImageForUpload(imageFile, crop);
+      const result = await scanPrescription(upload, consentGiven);
       const nextDrafts = result.medications.length > 0 ? result.medications.map(draftFromScan) : [emptyDraft()];
       setDrafts(nextDrafts);
       setActiveKey(nextDrafts[0].key);
@@ -129,11 +158,31 @@ export default function ScanPrescriptionModal({ profileId, onClose, onCreated }:
         {step !== 'review' ? (
           <div className="mt-4 flex flex-col items-center gap-4">
             {imagePreviewUrl ? (
-              <img
-                src={imagePreviewUrl}
-                alt="Foto de la fórmula"
-                className="max-h-80 w-full rounded-xl border border-border object-contain"
-              />
+              step === 'capture' ? (
+                <div className="flex w-full flex-col gap-2">
+                  <PrescriptionCropper src={imagePreviewUrl} value={crop} onChange={setCrop} />
+                  <p className="text-xs text-text-caption">
+                    <strong className="font-semibold text-text-secondary">Recomendado:</strong> arrastra sobre la foto
+                    para encerrar solo las líneas de los medicamentos. Así tu nombre, documento y los datos del médico
+                    no salen de tu teléfono.
+                    {crop && (
+                      <button
+                        type="button"
+                        onClick={() => setCrop(null)}
+                        className="ml-2 font-semibold text-text-secondary underline underline-offset-2"
+                      >
+                        Quitar recorte
+                      </button>
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <img
+                  src={imagePreviewUrl}
+                  alt="Foto de la fórmula"
+                  className="max-h-80 w-full rounded-xl border border-border object-contain"
+                />
+              )
             ) : (
               <label
                 htmlFor="prescriptionImage"
@@ -142,8 +191,8 @@ export default function ScanPrescriptionModal({ profileId, onClose, onCreated }:
                 <Camera className="h-8 w-8 text-primary" strokeWidth={1.75} />
                 <span className="text-sm font-semibold">Toma una foto o elige una imagen</span>
                 <span className="px-6 text-xs text-text-caption">
-                  Para leerla, la foto se envía a un servicio externo de inteligencia artificial. Nada se guarda
-                  hasta que revises cada medicamento. Si la fórmula tiene varios, los detectamos todos.
+                  Para leerla, la foto se envía a {providerName}. MediTrack no la guarda y nada se registra hasta
+                  que revises cada medicamento. Si la fórmula tiene varios, los detectamos todos.
                 </span>
               </label>
             )}
@@ -156,6 +205,50 @@ export default function ScanPrescriptionModal({ profileId, onClose, onCreated }:
               className="hidden"
             />
 
+            {scanPaused && (
+              <div role="alert" className="w-full rounded-lg bg-warning-bg px-3 py-2.5 text-sm font-medium text-warning">
+                La lectura de fórmulas está en pausa por ahora. Puedes ingresar el medicamento manualmente.
+              </div>
+            )}
+
+            {imagePreviewUrl && step === 'capture' && (
+              <div
+                className={`flex w-full items-start gap-2 rounded-lg px-3 py-2.5 text-sm ${
+                  consentRequired ? 'bg-warning-bg text-warning' : 'bg-surface-info text-text-secondary'
+                }`}
+              >
+                {consentRequired ? (
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+                ) : (
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+                )}
+                {consentRequired ? (
+                  <label htmlFor="scanConsent" className="flex cursor-pointer flex-col gap-2">
+                    <span>
+                      Esta foto se enviará a <strong>{providerName}</strong>, un servicio cuyas condiciones de
+                      privacidad <strong>no están verificadas</strong>: podría conservar la imagen o usarla para
+                      mejorar sus productos. Envíala solo si no muestra datos personales (recórtala) o si aceptas ese
+                      riesgo.
+                    </span>
+                    <span className="flex items-start gap-2 font-semibold">
+                      <input
+                        id="scanConsent"
+                        type="checkbox"
+                        checked={consentGiven}
+                        onChange={(event) => setConsentGiven(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 accent-primary"
+                      />
+                      Entiendo y acepto que la foto se envíe a este servicio.
+                    </span>
+                  </label>
+                ) : (
+                  <span>
+                    La foto se envía a <strong>{providerName}</strong> solo para leerla. MediTrack no la guarda.
+                  </span>
+                )}
+              </div>
+            )}
+
             {imagePreviewUrl && step === 'capture' && (
               <div className="flex w-full gap-2">
                 <label
@@ -167,7 +260,8 @@ export default function ScanPrescriptionModal({ profileId, onClose, onCreated }:
                 <button
                   type="button"
                   onClick={handleScan}
-                  className="flex h-12 flex-1 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+                  disabled={scanPaused || (consentRequired && !consentGiven)}
+                  className="flex h-12 flex-1 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Leer fórmula
                 </button>

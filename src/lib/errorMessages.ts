@@ -48,7 +48,24 @@ const KNOWN_MESSAGES: Record<string, string> = {
   'Frequency value is required': 'La frecuencia es obligatoria.',
   'Frequency must be a positive number': 'La frecuencia debe ser un número mayor que 0.',
   'Total quantity must be a positive number': 'La cantidad suministrada debe ser mayor que 0.',
-  'Quantity per dose must be a positive number': 'La cantidad por toma debe ser mayor que 0.'
+  'Quantity per dose must be a positive number': 'La cantidad por toma debe ser mayor que 0.',
+  'The daily limit of AI prescription scans has been reached. Try again tomorrow or enter the treatment manually.':
+    'Se alcanzó el límite diario de lecturas de fórmulas. Intenta mañana o ingresa el medicamento manualmente.',
+  'You have reached your daily limit of AI prescription scans. Try again tomorrow or enter the treatment manually.':
+    'Alcanzaste tu límite diario de lecturas de fórmulas. Intenta mañana o ingresa el medicamento manualmente.',
+  'Too many prescriptions are being read right now. Please try again in a minute or enter the treatment manually.':
+    'Se están leyendo muchas fórmulas en este momento. Intenta de nuevo en un minuto o ingresa el medicamento manualmente.',
+  'Too many prescriptions are being read right now. Please try again in a moment or enter the treatment manually.':
+    'Se están leyendo muchas fórmulas en este momento. Intenta de nuevo en un momento o ingresa el medicamento manualmente.',
+  'The uploaded file is too large': 'La foto es demasiado pesada. Prueba con una imagen más pequeña o recórtala.',
+  'Too many requests. Please try again later.': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
+  // Features an admin paused from the operations panel.
+  'New registrations are temporarily paused. Please try again later.':
+    'Los registros nuevos están pausados temporalmente. Intenta de nuevo más tarde.',
+  'Prescription scanning is temporarily unavailable. Please enter the treatment manually.':
+    'La lectura de fórmulas no está disponible por ahora. Ingresa el medicamento manualmente.',
+  'A reason is required to turn a switch off': 'Escribe el motivo para apagar un interruptor.',
+  'Unknown switch': 'Ese interruptor no existe.'
 };
 
 // Some backend messages embed a dynamic value (a timestamp) and can't be matched exactly —
@@ -65,6 +82,8 @@ const KNOWN_MESSAGE_PREFIXES: [string, string][] = [
   // Carries the profile id — a deleted dependent, or one that was never yours.
   ['Profile not found', 'Este perfil ya no existe o no tienes acceso a él.'],
   ['Invalid time zone', 'La zona horaria de tu dispositivo no es válida.'],
+  // Backend refused the scan because the consent to share the photo did not arrive.
+  ['This prescription reader', 'Debes aceptar que la foto se envíe al servicio de lectura para continuar.'],
   [
     "This dose can't be recorded yet",
     'Todavía no es hora de registrar esta toma — se habilita 10 minutos antes.'

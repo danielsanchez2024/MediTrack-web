@@ -47,3 +47,74 @@ body {
   background-color: var(--color-surface);
   color: var(--color-text);
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Landing page (/): animations only. Colors still come from the tokens above.
+   Everything that moves is switched off for people who ask for reduced motion. */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes landing-blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(24px, -28px) scale(1.08); }
+}
+@keyframes landing-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes landing-scan {
+  0% { top: 4%; }
+  50% { top: 92%; }
+  100% { top: 4%; }
+}
+@keyframes landing-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgb(45 159 131 / 0.45); }
+  100% { box-shadow: 0 0 0 14px rgb(45 159 131 / 0); }
+}
+
+.anim-float { animation: landing-float 6s ease-in-out infinite; }
+.anim-float-slow { animation: landing-float 8s ease-in-out infinite; animation-delay: -3s; }
+.anim-blob { animation: landing-blob 14s ease-in-out infinite; }
+.anim-pop { animation: landing-pop 0.45s ease-out both; }
+.anim-scan { animation: landing-scan 3.2s ease-in-out infinite; }
+.anim-pulse-ring { animation: landing-pulse-ring 1.8s ease-out infinite; }
+
+/* Sections fade up as they enter the viewport. Only hidden when JS marked the page (see the
+   inline script in index.astro), so without JavaScript the content is simply visible. */
+.js-reveal .reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.js-reveal .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+html { scroll-behavior: smooth; }
+section[id] { scroll-margin-top: 5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .anim-float, .anim-float-slow, .anim-blob, .anim-pop, .anim-scan, .anim-pulse-ring { animation: none; }
+  .js-reveal .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Admin charts. Colors follow the validated data-viz palette (categorical slots 1-2 and the
+   fixed status colors). The app has no dark theme, so only the light values exist here. */
+.viz-root {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-good: #0ca30c;
+  --viz-warning: #fab219;
+  --viz-critical: #d03b3b;
+  --viz-neutral: #94a3b8;
+  --viz-grid: #e8edf3;
+  --viz-axis: #94a3b8;
+  --viz-surface: #ffffff;
+  --viz-track: #cde2fb;
+}

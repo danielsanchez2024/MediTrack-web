@@ -1,8 +1,9 @@
 // Foreground-only browser notifications — they fire while this tab is open, using the
 // Notification API directly. There's no service worker or push subscription here, so nothing
-// arrives if the tab or browser is closed; that would need a separate push-notification
-// backend. Email reminders (sent server-side by DoseReminderService) are the channel that
-// still works when nobody has the dashboard open.
+// arrives if the tab or browser is closed; that would need Web Push (service worker, VAPID keys
+// and a backend that sends it, over HTTPS). Email reminders (sent server-side by
+// DoseReminderService) are the channel that still works when nobody has the dashboard open.
+// The bell (NotificationBell) decides WHEN to call notify(); this file only talks to the browser.
 
 export type NotificationSupport = 'unsupported' | NotificationPermission;
 

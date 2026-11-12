@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ShieldCheck, ShieldAlert, LogOut, Plus, Bell, Clock, ListChecks, UserCog, Settings, History } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, LogOut, Plus, Clock, ListChecks, UserCog, Settings, History } from 'lucide-react';
 import { getSession, saveSession, type Session } from '../lib/session';
 import {
   getDependents,
@@ -15,6 +15,8 @@ import {
   getEmergencyCard,
   getConsentStatus,
   logout,
+  getNotificationPreferences,
+  updateNotificationPreferences,
   ApiError,
   type ProfileSummary,
   type ScheduledDose,
@@ -22,11 +24,22 @@ import {
   type Allergy,
   type AllergySeverity,
   type EmergencyCard,
-  type ConsentStatus
+  type ConsentStatus,
+  type NotificationPreferences
 } from '../lib/api';
 import { toISODate, formatFullDate, formatTime } from '../lib/date';
 import { toSpanishMessage } from '../lib/errorMessages';
 import { getNotificationSupport, requestNotificationPermission, notify, type NotificationSupport } from '../lib/notifications';
+import {
+  addInboxItem,
+  clearInbox,
+  loadInbox,
+  markAllRead,
+  subscribeInbox,
+  type InboxItem,
+  type InboxKind
+} from '../lib/notificationInbox';
+import NotificationBell from './dashboard/NotificationBell';
 import ProfileSwitcher from './dashboard/ProfileSwitcher';
 import DaySelector, { type DayOption } from './dashboard/DaySelector';
 import DoseCard from './dashboard/DoseCard';
@@ -97,9 +110,15 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [notificationSupport, setNotificationSupport] = useState<NotificationSupport>('unsupported');
-  // Which dose+type notifications already fired this session, so the ticking clock doesn't
-  // re-fire the same one every 15s for as long as its threshold stays crossed. Resets on
-  // reload — acceptable since these are foreground-only anyway (see lib/notifications.ts).
+  // The account's reminder preferences (shared with the phone app) and this browser's inbox of
+  // recent reminders — both drive the notification bell.
+  const [pushPrefs, setPushPrefs] = useState<NotificationPreferences | null>(null);
+  const [inbox, setInbox] = useState<InboxItem[]>([]);
+  const [bellBusy, setBellBusy] = useState(false);
+  const [bellError, setBellError] = useState<string | null>(null);
+  // Which dose+type reminders were already announced, so the ticking clock doesn't re-fire the
+  // same one every 15s for as long as its threshold stays crossed (the inbox also remembers them
+  // across reloads).
   const notifiedRef = useRef<Set<string>>(new Set());
   // Bumped on every loadDayData call: a response that arrives after a newer request started
   // (a slow poll, a quick profile switch) is discarded instead of overwriting what's on screen
@@ -115,6 +134,57 @@ export default function Dashboard() {
   async function handleEnableNotifications() {
     setNotificationSupport(await requestNotificationPermission());
   }
+
+  // The bell's switch is the account's "notificaciones en el móvil" preference: the phone app reads
+  // it, asks the OS for its own permission the next time it opens, and schedules its reminders.
+  // Turning it on here also asks THIS browser for permission. The preferences are re-read first so
+  // a change made elsewhere (the account modal, the phone) is not overwritten by a stale copy.
+  async function handleToggleBell(enabled: boolean) {
+    setBellBusy(true);
+    setBellError(null);
+    try {
+      if (enabled && notificationSupport === 'default') {
+        setNotificationSupport(await requestNotificationPermission());
+      }
+      const fresh = await getNotificationPreferences();
+      setPushPrefs(await updateNotificationPreferences({ ...fresh, pushEnabled: enabled }));
+    } catch (caught) {
+      setBellError(
+        caught instanceof ApiError ? toSpanishMessage(caught.message) : 'No pudimos guardar el cambio. Intenta de nuevo.'
+      );
+    } finally {
+      setBellBusy(false);
+    }
+  }
+
+  const sessionUserId = session?.userId;
+
+  // The phone (or the account modal) can change the preference at any time, so it is re-read when
+  // the tab regains focus and once a minute.
+  useEffect(() => {
+    if (!sessionUserId) return;
+    let cancelled = false;
+    const load = () =>
+      getNotificationPreferences()
+        .then((loaded) => {
+          if (!cancelled) setPushPrefs(loaded);
+        })
+        .catch(() => {});
+    load();
+    window.addEventListener('focus', load);
+    const interval = setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', load);
+      clearInterval(interval);
+    };
+  }, [sessionUserId]);
+
+  useEffect(() => {
+    if (!sessionUserId) return;
+    setInbox(loadInbox(sessionUserId));
+    return subscribeInbox(sessionUserId, setInbox);
+  }, [sessionUserId]);
 
   const [consentStatus, setConsentStatus] = useState<ConsentStatus | null>(null);
 
@@ -257,28 +327,37 @@ export default function Dashboard() {
     return new Set(Array.from(earliestPerTreatment.values()).map((dose) => dose.id));
   }, [doses, day]);
 
-  // Fires the two foreground notifications as the live clock crosses each threshold — only
-  // for today's still-pending doses, and only once per dose per threshold per session.
+  // Announces a dose as the live clock crosses each threshold — only for today's still-pending
+  // doses, only once per dose per threshold, and only when the bell is on and the account's timing
+  // asks for that moment. Every announcement lands in the bell's inbox; the browser's own
+  // notification is shown on top when this browser granted permission (notify() checks it).
   useEffect(() => {
-    if (notificationSupport !== 'granted' || day !== 'today' || !doses) return;
+    if (!sessionUserId || !pushPrefs?.pushEnabled || day !== 'today' || !doses) return;
+    const wantsUpcoming = pushPrefs.pushTiming === 'BEFORE' || pushPrefs.pushTiming === 'BOTH';
+    const wantsDue = pushPrefs.pushTiming === 'AT_TIME' || pushPrefs.pushTiming === 'BOTH';
+    // For a dependent, say whose dose it is.
+    const watched = profiles?.find((profile) => profile.id === activeProfileId);
+    const who = watched && activeProfileId !== sessionUserId ? `${watched.name}: ` : '';
+
+    function announce(kind: InboxKind, doseId: string, title: string, body: string) {
+      const id = `${kind}:${doseId}`;
+      if (notifiedRef.current.has(id)) return;
+      notifiedRef.current.add(id);
+      if (addInboxItem(sessionUserId as string, { id, kind, title, body })) notify(title, body);
+    }
 
     for (const dose of doses) {
       if (dose.status !== 'PENDING') continue;
       const minutesUntil = (new Date(dose.scheduledAt).getTime() - now.getTime()) / 60000;
 
-      const upcomingKey = `upcoming:${dose.id}`;
-      if (minutesUntil <= UPCOMING_NOTIFICATION_MINUTES && minutesUntil > 0 && !notifiedRef.current.has(upcomingKey)) {
-        notifiedRef.current.add(upcomingKey);
-        notify('Se acerca una dosis', `${dose.medicationName} (${dose.dosage}) a las ${formatTime(dose.scheduledAt)}`);
+      if (wantsUpcoming && minutesUntil <= UPCOMING_NOTIFICATION_MINUTES && minutesUntil > 0) {
+        announce('upcoming', dose.id, 'Se acerca una dosis', `${who}${dose.medicationName} (${dose.dosage}) a las ${formatTime(dose.scheduledAt)}`);
       }
-
-      const dueKey = `due:${dose.id}`;
-      if (minutesUntil <= 0 && minutesUntil > -DUE_NOTIFICATION_GRACE_MINUTES && !notifiedRef.current.has(dueKey)) {
-        notifiedRef.current.add(dueKey);
-        notify('Es hora de una dosis', `${dose.medicationName} (${dose.dosage})`);
+      if (wantsDue && minutesUntil <= 0 && minutesUntil > -DUE_NOTIFICATION_GRACE_MINUTES) {
+        announce('due', dose.id, 'Es hora de una dosis', `${who}${dose.medicationName} (${dose.dosage})`);
       }
     }
-  }, [now, doses, day, notificationSupport]);
+  }, [now, doses, day, pushPrefs, sessionUserId, profiles, activeProfileId]);
 
   async function handleRecord(doseId: string, status: 'TAKEN' | 'SKIPPED', notes: string) {
     if (!activeProfileId) return;
@@ -408,6 +487,17 @@ export default function Dashboard() {
                 Administración
               </a>
             )}
+            <NotificationBell
+              preferences={pushPrefs}
+              browserSupport={notificationSupport}
+              inbox={inbox}
+              busy={bellBusy}
+              error={bellError}
+              onToggle={handleToggleBell}
+              onAllowBrowser={handleEnableNotifications}
+              onMarkAllRead={() => sessionUserId && markAllRead(sessionUserId)}
+              onClear={() => sessionUserId && clearInbox(sessionUserId)}
+            />
             <button
               type="button"
               onClick={() => setShowAccountModal(true)}
@@ -431,24 +521,6 @@ export default function Dashboard() {
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {error && (
           <div className="mb-5 rounded-lg bg-danger-bg px-4 py-3 text-sm font-medium text-danger-strong">{error}</div>
-        )}
-
-        {notificationSupport === 'default' && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-info px-4 py-3">
-            <div className="flex items-start gap-2 text-sm text-text-secondary">
-              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
-              Activa las notificaciones del navegador para avisos cuando se acerque o llegue la
-              hora de una toma. Solo funcionan mientras esta pestaña esté abierta — para cuando
-              esté cerrada, los avisos llegan por correo.
-            </div>
-            <button
-              type="button"
-              onClick={handleEnableNotifications}
-              className="h-9 shrink-0 rounded-lg bg-primary px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-            >
-              Activar
-            </button>
-          </div>
         )}
 
         {activeProfile && (
@@ -494,7 +566,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <DaySelector value={day} onChange={setDay} />
               {activeProfileId && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setShowTreatmentsModal(true)}

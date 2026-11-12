@@ -20,6 +20,16 @@ y la web tiene que mostrar la hora local correcta en todas (ver `ApiDateTimeConf
    vuelve a resolver su IP cada 10 s (`resolve` en los `nginx/upstream.conf`). Justo después
    de recrear un contenedor puede haber unos segundos de 502 mientras arranca.
 
+   **Desactiva el límite de velocidad del backend** para esta corrida: cada prueba crea sus
+   propias cuentas desde una sola IP y el límite de 5 registros por hora (`RateLimitFilter`)
+   las bloquearía. Pon `RATE_LIMIT_ENABLED=false` en el `.env` con el que levantas el backend
+   (el compose local ya lo pasa) y vuelve a quitarlo después. Nunca en producción.
+
+   **Las pruebas del panel de administración** (`admin-panel.spec.js`) necesitan convertir una
+   cuenta en administrador, y no existe API para eso a propósito: lo hacen con
+   `docker exec <contenedor-de-la-bd> psql`. El contenedor por defecto es `meditrack-local-db`
+   (cámbialo con `E2E_DB_CONTAINER`); si no se puede, esas pruebas se omiten.
+
 2. Google Chrome instalado (se usa el del sistema). Si no lo tienes, usa el Chromium de
    Playwright:
 

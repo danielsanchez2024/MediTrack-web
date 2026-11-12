@@ -1,5 +1,6 @@
 // @ts-check
 const base = require('@playwright/test');
+const { execFileSync } = require('node:child_process');
 
 const PASSWORD = 'E2eCheck123!';
 
@@ -37,6 +38,18 @@ const test = base.test.extend({
         if (res.status !== 201) throw new Error(`register failed: ${res.status} ${JSON.stringify(res.body)}`);
         created.push(email);
         return { name, email, token: await login(email) };
+      },
+      // There is no API to make someone an administrator (on purpose), so the test promotes the
+      // account straight in the local database container. Set E2E_DB_CONTAINER if yours is named differently.
+      promoteToAdmin(email) {
+        const container = process.env.E2E_DB_CONTAINER ?? 'meditrack-local-db';
+        try {
+          execFileSync('docker', ['exec', container, 'psql', '-U', 'meditrack', '-d', 'meditrack', '-c',
+            `UPDATE users SET role = 'ADMIN' WHERE email = '${email.replace(/'/g, "''")}'`], { stdio: 'pipe' });
+          return true;
+        } catch {
+          return false;
+        }
       },
       // For accounts created some other way (e.g. a dependent claiming theirs).
       track: (email) => created.push(email)
